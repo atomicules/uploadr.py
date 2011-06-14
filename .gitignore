@@ -4,3 +4,6 @@
 .settings
 .DS_Store
 *.pyc
+uploadr.history.db
+*~
+.flickrToken

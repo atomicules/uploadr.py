@@ -32,8 +32,8 @@
 
 """
 
-import sys, time, os, urllib2, shelve, string, xmltramp, mimetools, mimetypes, hashlib, webbrowser
-
+import sys, time, os, urllib2, shelve, string, xmltramp, mimetools, mimetypes, hashlib, webbrowser, string
+from optparse import OptionParser
 
 #
 ##
@@ -48,7 +48,8 @@ IMAGE_DIR = "images/"
 #   Flickr settings
 #
 FLICKR = {"title": "",
-        "description": "",
+        "desc": "",
+        "location":"",
         "tags": "auto-upload",
         "is_public": "1",
         "is_friend": "0",
@@ -65,8 +66,8 @@ HISTORY_FILE = "uploadr.history"
 ##
 ##  You shouldn't need to modify anything below here
 ##
-FLICKR["api_key" ] = os.environ['FLICKR_UPLOADR_PY_API_KEY']
-FLICKR["secret" ] = os.environ['FLICKR_UPLOADR_PY_SECRET']
+# FLICKR["api_key" ] = os.environ['FLICKR_UPLOADR_PY_API_KEY']
+# FLICKR["secret" ] = os.environ['FLICKR_UPLOADR_PY_SECRET']
 
 class APIConstants:
     """ APIConstants class 
@@ -134,7 +135,7 @@ class Uploadr:
         """ Authenticate user so we can upload images
         """
 
-        print("Getting new Token")
+        print "Getting new Token"
         self.getFrob()
         self.getAuthKey()
         self.getToken()   
@@ -166,7 +167,7 @@ class Uploadr:
             else:
                 self.reportError( response )
         except:
-            print (("Error getting frob:" , str( sys.exc_info() )))
+            print "Error getting frob:" , str( sys.exc_info() )
 
     def getAuthKey( self ): 
         """
@@ -183,11 +184,11 @@ class Uploadr:
             webbrowser.open( url )
             ans = raw_input("Have you authenticated this application? (Y/N): ")
         except:
-            print(str(sys.exc_info()))
+            print str(sys.exc_info())
         if ( ans.lower() == "n" ):
-            print("You need to allow this program to access your Flickr site.")
-            print("A web browser should pop open with instructions.")
-            print("After you have allowed access restart uploadr.py")
+            print "You need to allow this program to access your Flickr site."
+            print "A web browser should pop open with instructions."
+            print "After you have allowed access restart uploadr.py"
             sys.exit()    
 
     def getToken( self ):
@@ -226,7 +227,7 @@ class Uploadr:
             else :
                 self.reportError( res )
         except:
-            print(str(sys.exc_info()))
+            print str(sys.exc_info())
 
     def getCachedToken( self ): 
         """
@@ -246,7 +247,7 @@ class Uploadr:
         try:
             open( self.TOKEN_FILE , "w").write( str(self.token) )
         except:
-            print("Issue writing token to local cache " , str(sys.exc_info()))
+            print "Issue writing token to local cache " , str(sys.exc_info())
 
     def checkToken( self ):    
         """
@@ -282,7 +283,7 @@ class Uploadr:
                 else :
                     self.reportError( res )
             except:
-                print(str(sys.exc_info()))
+                print str(sys.exc_info())
             return False
      
              
@@ -319,31 +320,82 @@ class Uploadr:
         """
 
         if ( not self.uploaded.has_key( image ) ):
-            print("Uploading ", image , "...",)
+            # print "Uploading ", image , "...",
             try:
+                title = string.rsplit(image, '/', 2);
+                title = string.join( (title[1],title[2]), '/')
                 photo = ('photo', image, open(image,'rb').read())
                 d = {
                     api.token   : str(self.token),
                     api.perms   : str(self.perms),
+                    "title"     : title,
                     "tags"      : str( FLICKR["tags"] ),
+                    "description" : str( FLICKR["desc"] ),
                     "is_public" : str( FLICKR["is_public"] ),
                     "is_friend" : str( FLICKR["is_friend"] ),
                     "is_family" : str( FLICKR["is_family"] )
                 }
                 sig = self.signCall( d )
                 d[ api.sig ] = sig
-                d[ api.key ] = FLICKR[ api.key ]        
+                d[ api.key ] = FLICKR[ api.key ]         
                 url = self.build_request(api.upload, d, (photo,))    
                 xml = urllib2.urlopen( url ).read()
                 res = xmltramp.parse(xml)
                 if ( self.isGood( res ) ):
-                    print("successful.")
+                    print "Success", image
                     self.logUpload( res.photoid, image )
+                    """ 
+                    # stupid flickr upload fails to set description
+                    if len(FLICKR['desc']):
+                        print FLICKR['desc']
+                        title = string.rsplit(image, '/', 2);
+                        title = string.join( (title[1],title[2]), '/')
+                        d = { 
+                            api.token : str(self.token),
+                            "method" : str("flickr.photos.setMeta"),
+                            "photo_id" : str(res.photoid),
+                            "title" : str(title),
+                            "description": str(FLICKR["desc"])
+                            }
+                        sig = self.signCall( d )
+                        d[ api.sig ] = sig
+                        d[ api.key ] = FLICKR[ api.key ]         
+                        url = self.build_request(api.rest, d, () )
+                        xml = urllib2.urlopen( url ).read()
+                        res = xmltramp.parse(xml)
+                        if ( self.isGood( res ) ):
+                            print "Patched Description", title
+                        else:
+                            print "FAILED Description ", title
+                            self.reportError( res )
+                    """        
+                    # stupid flickr upload does not allow geo-location
+                    # without a second call to the setLocation API        
+                    if len(FLICKR["lat"]) and len(FLICKR["lon"]):
+                        d = { 
+                            api.token : str(self.token),
+                            "method" : str("flickr.photos.geo.setLocation"),
+                            "photo_id" : str(res.photoid),
+                            'lat': str(FLICKR['lat']),
+                            'lon': str(FLICKR['lon'])
+                            }
+                        sig = self.signCall( d )
+                        d[ api.sig ] = sig
+                        d[ api.key ] = FLICKR[ api.key ]         
+                        url = self.build_request(api.rest, d, () )
+                        xml = urllib2.urlopen( url ).read()
+                        res = xmltramp.parse(xml)
+                        if ( self.isGood( res ) ):
+                            print "Patched Location", d['lat'], d['lon']
+                        else:
+                            print "FAILED Location", d['lat'], d['lon']
+                            self.reportError( res )
+
                 else :
-                    print("problem..")
+                    print "FAILED ", image
                     self.reportError( res )
             except:
-                print(str(sys.exc_info()))
+                print str(sys.exc_info())
 
 
     def logUpload( self, photoID, imageName ):
@@ -418,9 +470,9 @@ class Uploadr:
         """
 
         try:
-            print("Error:", str( res.err('code') + " " + res.err('msg') ))
+            print "Error:", str( res.err('code') + " " + res.err('msg') )
         except:
-            print("Error: " + str( res ))
+            print "Error: " + str( res )
 
     def getResponse( self, url ):
         """
@@ -443,7 +495,61 @@ class Uploadr:
 if __name__ == "__main__":
     flick = Uploadr()
     
-    if ( len(sys.argv) >= 2  and sys.argv[1] == "-d"):
-        flick.run()
+    usage= "usage: %prog [options] dir_to_upload"
+    version="%prog 0.1"
+    parser = OptionParser(usage=usage, version=version)
+    parser.add_option("-d", "--daemon", action="store_true",  dest="daemon", default=False, help="Run forever as a daemon")
+    parser.add_option("-e", "--desc",   action="store", dest="desc",   default="", help="Description of files to upload")
+    parser.add_option("-k", "--apikey", action="store", dest="apikey", default="", help="Flickr api_key")
+    parser.add_option("-s", "--secret", action="store", dest="secret", default="", help="Flickr api secret")
+    parser.add_option("-t", "--tags",   action="store", dest="tags",   default=sys.argv[0], help="Tags to flag uploaded photos with")
+    parser.add_option("-i", "--title",  action="store", dest="tags",   default="",    help="Title to give uploaded photos")
+    parser.add_option("-p", "--public", action="store_const", const=1, dest="public", default=1,     help="Mark the upload public")
+    parser.add_option("-n", "--notpublic", action="store_const", const=0, dest="public",                help="Mark the upload hidden (not public)")
+    parser.add_option("-f", "--friend", action="store_const", const=1, dest="friends", default=0,    help="Mark the upload for friends only")
+    parser.add_option("-a", "--family", action="store_const", const=1, dest="family", default=0,     help="Mark the upload for Family only")
+    parser.add_option("-x", "--lon", action="store", dest="lat", default="", help="latitude geo-location")
+    parser.add_option("-y", "--lat", action="store", dest="lon", default="", help="longitude geo-location")
+
+    (options,args) = parser.parse_args()
+
+    if hasattr(options,'apikey'):
+        FLICKR["api_key" ] = options.apikey
     else:
-        flick.upload()
+        try:
+            FLICKR["api_key" ] = os.environ['FLICKR_UPLOADR_PY_API_KEY']
+        except:    
+            parser.error("must specify Flickr api_key")
+
+    if hasattr(options,'secret'):
+        FLICKR["secret" ] = options.secret
+    else:        
+        try:
+            FLICKR["secret" ] = os.environ['FLICKR_UPLOADR_PY_SECRET']
+        except:    
+            parser.error("must specify Flickr api secret")
+
+    if hasattr(options, 'title'):
+        FLICKR["title"] = options.title
+    if hasattr(options, "desc"):
+        FLICKR["desc"] = options.desc
+    if hasattr(options, 'tags'):
+        FLICKR["tags"] = options.tags
+    if hasattr(options, 'lat'):
+        FLICKR["lat"] = options.lat
+    if hasattr(options, 'lon'):
+        FLICKR["lon"] = options.lon
+
+    FLICKR["is_public"] = options.public
+    FLICKR["is_friend"] = options.friends
+    FLICKR["is_family"] = options.family
+
+    if len(args):
+        IMAGE_DIR = args[0];
+        if ( options.daemon == True ) :
+            flick.run()
+        else:
+            flick.upload()
+    else:
+        parser.error("incorrect number of arguments");
+
