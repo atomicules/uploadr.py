@@ -503,7 +503,7 @@ if __name__ == "__main__":
     parser.add_option("-k", "--apikey", action="store", dest="apikey", default="", help="Flickr api_key")
     parser.add_option("-s", "--secret", action="store", dest="secret", default="", help="Flickr api secret")
     parser.add_option("-t", "--tags",   action="store", dest="tags",   default=sys.argv[0], help="Tags to flag uploaded photos with")
-    parser.add_option("-i", "--title",  action="store", dest="tags",   default="",    help="Title to give uploaded photos")
+    parser.add_option("-i", "--title",  action="store", dest="title",   default="",    help="Title to give uploaded photos")
     parser.add_option("-p", "--public", action="store_const", const=1, dest="public", default=1,     help="Mark the upload public")
     parser.add_option("-n", "--notpublic", action="store_const", const=0, dest="public",                help="Mark the upload hidden (not public)")
     parser.add_option("-f", "--friend", action="store_const", const=1, dest="friends", default=0,    help="Mark the upload for friends only")
