@@ -99,7 +99,7 @@ class Uploadr:
     
     token = None
     perms = ""
-    TOKEN_FILE = ".flickrToken"
+    TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".flickrToken")
     
     def __init__( self ):
         """ Constructor
