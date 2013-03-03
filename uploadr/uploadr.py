@@ -32,7 +32,7 @@
 
 """
 
-import sys, time, os, urllib2, shelve, string, xmltramp, mimetools, mimetypes, hashlib, webbrowser, string
+import sys, time, os, urllib2, shelve, string, xmltramp, mimetools, mimetypes, hashlib, string
 from optparse import OptionParser
 
 #
@@ -181,7 +181,7 @@ class Uploadr:
         url = self.urlGen( api.auth, d, sig )
         ans = ""
         try:
-            webbrowser.open( url )
+            print "Open this url in a webbrowser: %s" % url
             ans = raw_input("Have you authenticated this application? (Y/N): ")
         except:
             print str(sys.exc_info())
