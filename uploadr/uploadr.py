@@ -61,7 +61,7 @@ SLEEP_TIME = 1 * 60
 #
 #   File we keep the history of uploaded images in.
 #
-HISTORY_FILE = "uploadr.history"
+HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".uploadr.history")
 
 ##
 ##  You shouldn't need to modify anything below here
